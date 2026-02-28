@@ -98,7 +98,7 @@ def restore_backup(backup_dir: Path, sd_path: Path) -> None:
             dest = sd_path / relative_path
             dest.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(source, dest)
-            console.print(f"  [green]✓[/green] Restaurado: {relative_path}")
+            console.print(f"  [green]✓[/green] Restored: {relative_path}")
 
 
 def smart_merge(source_dir: Path, sd_path: Path) -> None:

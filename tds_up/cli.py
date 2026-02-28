@@ -38,85 +38,94 @@ def main(
 
 @app.command()
 def update(
-    latest: bool = typer.Option(False, "--latest", help="Descarga e instala la última versión disponible."),
-    luma_only: bool = typer.Option(False, "--luma-only", help="Actualiza solo Luma3DS."),
-    gm9_only: bool = typer.Option(False, "--gm9-only", help="Actualiza solo GodMode9."),
-    sd_path: Optional[Path] = typer.Option(None, "--sd-path", help="Ruta manual a la SD si no se detecta automáticamente."),
+    latest: bool = typer.Option(
+        False, "--latest", help="Download and install the latest available version."),
+    luma_only: bool = typer.Option(
+        False, "--luma-only", help="Update only Luma3DS."),
+    gm9_only: bool = typer.Option(
+        False, "--gm9-only", help="Update only GodMode9."),
+    sd_path: Optional[Path] = typer.Option(
+        None, "--sd-path", help="Manual path to the SD if not auto-detected."),
 ) -> None:
-    """Descarga e instala Luma3DS y/o GodMode9 en la SD de forma segura."""
+    """Download and install Luma3DS and/or GodMode9 to the SD safely."""
     from tds_up import core, cleaner, network
     from tds_up.utils import extract_zip_bytes, cleanup_temp_dir
 
     if not latest:
-        console.print("[red]Usa --latest para descargar la última versión.[/red]")
+        console.print(
+            "[red]Use --latest to download the latest version.[/red]")
         raise typer.Exit(1)
 
-    console.print(Panel("[bold cyan]3ds-up — Actualizador seguro para Nintendo 3DS[/bold cyan]"))
+    console.print(
+        Panel("[bold cyan]3ds-up — Safe updater for Nintendo 3DS[/bold cyan]"))
 
-    # 1. Detectar SD
-    console.print("\n[bold]1. Detectando SD...[/bold]")
+    # 1. Detect SD
+    console.print("\n[bold]1. Detecting SD...[/bold]")
     try:
         sd = core.detect_sd_card(sd_path)
-        console.print(f"  [green]✓[/green] SD detectada: {sd}")
+        console.print(f"  [green]✓[/green] SD detected: {sd}")
     except FileNotFoundError as e:
         console.print(f"  [red]✗[/red] {e}")
         raise typer.Exit(1)
 
     # 2. Backup
-    console.print("\n[bold]2. Creando backup de configuración...[/bold]")
+    console.print("\n[bold]2. Creating configuration backup...[/bold]")
     backup_dir = core.create_backup(sd)
-    console.print(f"  [green]✓[/green] Backup guardado en: {backup_dir}")
+    console.print(f"  [green]✓[/green] Backup saved at: {backup_dir}")
 
     # 3. Descargar y aplicar
     try:
         if not gm9_only:
-            _install_luma(sd, core, network, extract_zip_bytes, cleanup_temp_dir)
+            _install_luma(sd, core, network,
+                          extract_zip_bytes, cleanup_temp_dir)
 
         if not luma_only:
-            _install_gm9(sd, core, network, extract_zip_bytes, cleanup_temp_dir)
+            _install_gm9(sd, core, network,
+                         extract_zip_bytes, cleanup_temp_dir)
 
-        # 4. Limpiar basura de macOS
-        console.print("\n[bold]4. Limpiando archivos macOS de la SD...[/bold]")
+        # 4. Clean macOS junk
+        console.print("\n[bold]4. Cleaning macOS junk files from SD...[/bold]")
         removed = cleaner.clean_macos_junk(sd)
         cleaner.reset_archive_bits(sd)
-        console.print(f"  [green]✓[/green] {removed} archivos basura eliminados")
+        console.print(f"  [green]✓[/green] {removed} junk files removed")
 
     except Exception as e:
         console.print(f"\n[red]✗ Error: {e}[/red]")
-        console.print("[yellow]Restaurando backup...[/yellow]")
+        console.print("[yellow]Restoring backup...[/yellow]")
         core.restore_backup(backup_dir, sd)
         raise typer.Exit(1)
 
-    console.print(Panel("[bold green]¡Actualización completada! Inserta la SD en tu 3DS.[/bold green]"))
+    console.print(
+        Panel("[bold green]Update complete! Insert the SD into your 3DS.[/bold green]"))
 
 
 def _install_luma(sd, core, network, extract_zip_bytes, cleanup_temp_dir):
-    console.print("\n[bold]3a. Descargando Luma3DS...[/bold]")
+    console.print("\n[bold]3a. Downloading Luma3DS...[/bold]")
     asset = network.get_latest_luma()
-    console.print(f"  [green]✓[/green] Versión encontrada: {asset.version}")
+    console.print(f"  [green]✓[/green] Version found: {asset.version}")
 
-    with console.status(f"  Descargando {asset.name}..."):
+    with console.status(f"  Downloading {asset.name}..."):
         data = network.download_asset(asset)
 
     tmp = extract_zip_bytes(data)
     try:
-        console.print("  Aplicando Smart Merge...")
+        console.print("  Applying Smart Merge...")
         core.smart_merge(tmp, sd)
     finally:
         cleanup_temp_dir(tmp)
 
 
 def _install_gm9(sd, core, network, extract_zip_bytes, cleanup_temp_dir):
-    console.print("\n[bold]3b. Descargando GodMode9...[/bold]")
+    console.print("\n[bold]3b. Downloading GodMode9...[/bold]")
     asset = network.get_latest_gm9()
-    console.print(f"  [green]✓[/green] Versión encontrada: {asset.version}")
+    console.print(f"  [green]✓[/green] Version found: {asset.version}")
 
-    with console.status(f"  Descargando {asset.name}..."):
+    with console.status(f"  Downloading {asset.name}..."):
         data = network.download_asset(asset)
 
     tmp = extract_zip_bytes(data)
     try:
-        console.print("  Aplicando Smart Merge...")
+        console.print("  Applying Smart Merge...")
         core.smart_merge(tmp, sd)
     finally:
         cleanup_temp_dir(tmp)
@@ -124,71 +133,76 @@ def _install_gm9(sd, core, network, extract_zip_bytes, cleanup_temp_dir):
 
 @app.command(name="fix-archive-bit")
 def fix_archive_bit(
-    sd_path: Optional[Path] = typer.Argument(None, help="Ruta a la SD. Si no se indica, se auto-detecta."),
+    sd_path: Optional[Path] = typer.Argument(
+        None, help="Path to the SD. If not provided, auto-detects."),
 ) -> None:
-    """Elimina archivos basura de macOS de la SD sin actualizar nada."""
+    """Removes macOS junk files from the SD without updating anything."""
     from tds_up import core, cleaner
 
-    console.print(Panel("[bold cyan]3ds-up — Limpieza de archivos macOS[/bold cyan]"))
+    console.print(Panel("[bold cyan]3ds-up — macOS file cleanup[/bold cyan]"))
 
-    console.print("\n[bold]Detectando SD...[/bold]")
+    console.print("\n[bold]Detecting SD...[/bold]")
     try:
         sd = core.detect_sd_card(sd_path)
-        console.print(f"  [green]✓[/green] SD detectada: {sd}")
+        console.print(f"  [green]✓[/green] SD detected: {sd}")
     except FileNotFoundError as e:
         console.print(f"  [red]✗[/red] {e}")
         raise typer.Exit(1)
 
-    console.print("\n[bold]Limpiando...[/bold]")
+    console.print("\n[bold]Cleaning...[/bold]")
     removed = cleaner.clean_macos_junk(sd)
     cleaner.reset_archive_bits(sd)
 
-    console.print(Panel(f"[bold green]Limpieza completada. {removed} archivos eliminados.[/bold green]"))
+    console.print(
+        Panel(f"[bold green]Cleanup complete. {removed} files removed.[/bold green]"))
 
 
 @app.command()
 def install(
-    zip_file: Path = typer.Argument(..., help="Ruta al archivo ZIP a instalar."),
-    sd_path: Optional[Path] = typer.Option(None, "--sd-path", help="Ruta manual a la SD."),
+    zip_file: Path = typer.Argument(...,
+                                    help="Path to the ZIP file to install."),
+    sd_path: Optional[Path] = typer.Option(
+        None, "--sd-path", help="Manual path to the SD."),
 ) -> None:
-    """Instala un ZIP local (Luma3DS, GodMode9, etc.) en la SD de forma segura."""
+    """Installs a local ZIP (Luma3DS, GodMode9, etc.) to the SD safely."""
     from tds_up import core, cleaner
     from tds_up.utils import extract_zip, cleanup_temp_dir
 
-    console.print(Panel("[bold cyan]3ds-up — Instalación desde archivo local[/bold cyan]"))
+    console.print(
+        Panel("[bold cyan]3ds-up — Installation from local file[/bold cyan]"))
 
     if not zip_file.exists():
-        console.print(f"  [red]✗[/red] Archivo no encontrado: {zip_file}")
+        console.print(f"  [red]✗[/red] File not found: {zip_file}")
         raise typer.Exit(1)
 
-    console.print("\n[bold]1. Detectando SD...[/bold]")
+    console.print("\n[bold]1. Detecting SD...[/bold]")
     try:
         sd = core.detect_sd_card(sd_path)
-        console.print(f"  [green]✓[/green] SD detectada: {sd}")
+        console.print(f"  [green]✓[/green] SD detected: {sd}")
     except FileNotFoundError as e:
         console.print(f"  [red]✗[/red] {e}")
         raise typer.Exit(1)
 
-    console.print("\n[bold]2. Creando backup...[/bold]")
+    console.print("\n[bold]2. Creating backup...[/bold]")
     backup_dir = core.create_backup(sd)
 
     try:
-        console.print("\n[bold]3. Extrayendo e instalando...[/bold]")
+        console.print("\n[bold]3. Extracting and installing...[/bold]")
         tmp = extract_zip(zip_file)
         try:
             core.smart_merge(tmp, sd)
         finally:
             cleanup_temp_dir(tmp)
 
-        console.print("\n[bold]4. Limpiando archivos macOS...[/bold]")
+        console.print("\n[bold]4. Cleaning macOS files...[/bold]")
         removed = cleaner.clean_macos_junk(sd)
         cleaner.reset_archive_bits(sd)
-        console.print(f"  [green]✓[/green] {removed} archivos basura eliminados")
+        console.print(f"  [green]✓[/green] {removed} junk files removed")
 
     except Exception as e:
         console.print(f"\n[red]✗ Error: {e}[/red]")
-        console.print("[yellow]Restaurando backup...[/yellow]")
+        console.print("[yellow]Restoring backup...[/yellow]")
         core.restore_backup(backup_dir, sd)
         raise typer.Exit(1)
 
-    console.print(Panel("[bold green]¡Instalación completada![/bold green]"))
+    console.print(Panel("[bold green]Installation complete![/bold green]"))

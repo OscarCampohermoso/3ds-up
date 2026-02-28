@@ -8,7 +8,7 @@ from rich.console import Console
 
 console = Console()
 
-# Archivos y carpetas que macOS inyecta y que dañan la 3DS
+# Files and folders injected by macOS that harm the 3DS
 _JUNK_NAMES = {".DS_Store", "__MACOSX",
                ".Spotlight-V100", ".fseventsd", ".Trashes"}
 
@@ -33,7 +33,7 @@ def clean_macos_junk(sd_path: Path) -> int:
     for root, dirs, files in os.walk(sd_path, topdown=True):
         root_path = Path(root)
 
-        # Eliminar carpetas basura y evitar descender en ellas
+        # Remove junk folders and avoid descending into them
         junk_dirs = [d for d in dirs if d in _JUNK_NAMES]
         for junk_dir in junk_dirs:
             target = root_path / junk_dir
@@ -48,7 +48,7 @@ def clean_macos_junk(sd_path: Path) -> int:
                     f"  [yellow]⚠[/yellow] Could not delete {target}: {e}")
             dirs.remove(junk_dir)
 
-        # Eliminar archivos ._* y otros archivos basura
+        # Remove ._* files and other junk files
         for filename in files:
             if filename.startswith("._") or filename in _JUNK_NAMES:
                 target = root_path / filename
